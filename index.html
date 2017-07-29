@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<script src="http://d3js.org/d3.v4.min.js"></script>
+
+<html xmlns:xlink="http://www.w3.org/1999/xlink">
+<style> /* set the CSS */
+    path {
+        stroke:white;
+        stroke-width: 1px;
+    }
+
+    body {
+        font-family: Arial, sans-serif;
+    }
+
+    .legend {
+        font-size: 12px;
+    }
+
+    div.tooltip {
+            position: absolute;
+            text-align: center;
+            width: 160px;
+            height: 40px;
+            padding: 2px;
+            font: 12px sans-serif;
+            background: lightsteelblue;
+            border: 0px;
+            border-radius: 8px;
+            pointer-events: none;
+    }
+</style>
+
+<body>
+
+<h1>Map of Deadliest Earthquakes, 1900-2011</h1>
+<script>
+    
+var width = 960,
+    height = 500;
+
+// Setting color domains(intervals of values) for our map
+var color_domain = [2,3,4,5,6,7,8,9]
+//var ext_color_domain = [0, 50, 150, 350, 750, 1500]
+var legend_labels = ["2", "3", "4", "5", "6", "7", "8", "9"]
+var color = d3.scaleThreshold()
+    .domain(color_domain)
+    .range(["#FFFAFA", "#F4C2C2", "#FF6961", "#FF1C00", "#FF0000", "#CC0000", "#A40000", "#701C1C"]);
+
+var svg = d3.select("body").append("svg")
+    .attr("width", width)
+    .attr("height", height);
+
+var projection = d3.geoMercator()
+    .translate([width/2, height/2]);
+
+var path = d3.geoPath()
+    .projection(projection);
+
+// Define the div for the tooltip
+var div = d3.select("body").append("div")
+    .attr("class", "tooltip")
+    .style("opacity", 0);
+
+//Reading and loading map file
+d3.json("World_geo.json", function(error, json) {
+        svg.selectAll("path")
+      .data(json.features)
+      .enter().append("path")
+      .attr("d", path)
+          .style('stroke', 'white')
+            .style('fill', '#ccc');
+
+    // Adding Earthquakes on the map
+        d3.csv("Earthquake.csv", function(data) {
+
+            svg.selectAll('circle')
+               .data(data)
+               .enter().append('circle')
+               .attr('cx', function(d) {
+                        return projection([d.lon, d.lat])[0];
+                 })
+               .attr('cy', function(d) {
+                    return projection([d.lon, d.lat])[1];
+               })
+               .attr('r', function(d) {
+                   return Math.sqrt(parseInt(d.pde_total_deaths) * 0.002);
+                 })
+               //Adding mouse events
+                .on("mouseover", function(d) {
+                    div.transition()
+                        .duration(200)
+                        .style("opacity", .9);
+                    div.html("Magnitude:" + d.Magnitude.substring(0,3)+ "<br/>"  + "Total Deaths:" + d.pde_total_deaths + "<br/>"  + "Date:" + d.Origin )
+                        .style("left", (d3.event.pageX) + "px")
+                        .style("top", (d3.event.pageY - 28) + "px");
+                })
+                .on("mouseout", function(d) {
+                    div.transition()
+                        .duration(500)
+                        .style("opacity", 0)
+                })
+                .on("click", function(d) {
+                    window.location.assign(d.url);
+                })
+
+                .style('fill', function(d) { return color(+d.Magnitude.substring(0,1)); })
+               .style('opacity', 0.75);
+        });
+});
+
+//Adding legend for our Choropleth
+var legend = svg.selectAll("g.legend")
+    .data(color_domain)
+    .enter().append("g")
+    .attr("class", "legend");
+
+var ls_w = 20, ls_h = 20;
+
+legend.append("text")
+    .attr("x", 20)
+    .attr("y", 315)
+    .text("Magnitude");
+legend.append("rect")
+    .attr("x", 20)
+    .attr("y", function(d, i){ return height - (i*ls_h) - 2*ls_h;})
+    .attr("width", ls_w)
+    .attr("height", ls_h)
+    .style("fill", function(d, i) { return color(d); })
+    .style("opacity", 0.8);
+
+legend.append("text")
+    .attr("x", 50)
+    .attr("y", function(d, i){ return height - (i*ls_h) - ls_h - 4;})
+    .text(function(d, i){ return legend_labels[i]; });
+
+legend.append("text")
+    .attr("x", 120)
+    .attr("y", 315)
+    .text("Deaths");
+
+legend.append("circle")
+    .attr("cx", 120)
+    .attr("cy", 330)
+    .attr('r', 1)
+    .style('fill', 'red')
+    .style("opacity", 0.8);
+legend.append("circle")
+    .attr("cx", 120)
+    .attr("cy", 400)
+    .attr('r', 35)
+    .style('fill', 'red')
+    .style("opacity", 0.8);
+legend.append("text")
+    .attr("x", 170)
+    .attr("y", 335)
+    .text("100");
+legend.append("text")
+    .attr("x", 170)
+    .attr("y", 400)
+    .text("600,000");
+
+</script>
+
+</body></html>
